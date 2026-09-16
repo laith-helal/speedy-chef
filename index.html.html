@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مطعم الطباخ السريع - Cooking Master</title>
+    <!-- Tailwind CSS for modern responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for crisp icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Cairo & Tajawal for vibrant typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800;900&family=Tajawal:wght@500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            font-family: 'Cairo', 'Tajawal', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1e1b4b 0%, #311042 50%, #180828 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #f59e0b;
+            border-radius: 4px;
+        }
+
+        /* Dynamic Animations */
+        @keyframes floatUp {
+            0% { transform: translateY(0px) scale(0.9); opacity: 1; }
+            100% { transform: translateY(-40px) scale(1.2); opacity: 0; }
+        }
+        .float-text {
+            animation: floatUp 0.8s ease-out forwards;
+        }
+
+        @keyframes sizzle {
+            0% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.03) rotate(1deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+        .cooking-sizzle {
+            animation: sizzle 0.4s infinite ease-in-out;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(245, 158, 11, 0.9); }
+        }
+        .glow-button {
+            animation: pulseGlow 2s infinite;
+        }
+
+        /* Glassmorphism Panels */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .kitchen-surface {
+            background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+            border-top: 4px solid #f59e0b;
+        }
+
+        .progress-bar-fill {
+            transition: width 0.2s linear, background-color 0.3s ease;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen justify-between relative overflow-hidden">
+
+    <!-- Floating Background Particles Canvas -->
+    <canvas id="bgCanvas" class="absolute inset-0 pointer-events-none z-0"></canvas>
+
+    <!-- TOP NAV / GAME STATS BAR -->
+    <header class="relative z-10 w-full max-w-6xl mx-auto p-3 sm:p-4">
+        <div class="glass-panel rounded-2xl p-3 sm:p-4 flex flex-wrap justify-between items-center gap-3 shadow-2xl">
+            <!-- Game Title & Level -->
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-tr from-amber-500 to-red-500 p-3 rounded-xl shadow-lg flex items-center justify-center">
+                    <i class="fa-solid fa-utensils text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-red-400">
+                        الطباخ السريع
+                    </h1>
+                    <div class="flex items-center gap-2 text-xs sm:text-sm text-amber-200">
+                        <span>المرحلة: <strong id="levelNum" class="text-white text-base">1</strong></span>
+                        <span class="text-amber-500">•</span>
+                        <span id="levelTitle" class="text-amber-300">ساعة الذروة</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Group -->
+            <div class="flex items-center gap-2 sm:gap-6 flex-wrap">
+                <!-- Target / Earnings -->
+                <div class="bg-slate-900/80 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-coins text-amber-400 text-lg"></i>
+                    <div>
+                        <div class="text-[10px] text-slate-400 font-bold">الأرباح</div>
+                        <div class="text-sm sm:text-base font-extrabold text-emerald-400">
+                            $<span id="earnedMoney">0</span> / $<span id="targetMoney">150</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timer -->
+                <div class="bg-slate-900/80 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-clock text-rose-400 text-lg animate-pulse"></i>
+                    <div>
+                        <div class="text-[10px] text-slate-400 font-bold">الوقت المتبقي</div>
+                        <div id="timerText" class="text-sm sm:text-base font-extrabold text-rose-300">01:00</div>
+                    </div>
+                </div>
+
+                <!-- Combo Multiplier -->
+                <div class="bg-gradient-to-r from-purple-900/80 to-indigo-900/80 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-purple-500/30 flex items-center gap-2">
+                    <i class="fa-solid fa-fire text-orange-400 text-lg"></i>
+                    <div>
+                        <div class="text-[10px] text-purple-300 font-bold">الحماس</div>
+                        <div id="comboText" class="text-sm sm:text-base font-extrabold text-yellow-300">x1</div>
+                    </div>
+                </div>
+
+                <!-- Sound & Pause Controls -->
+                <div class="flex items-center gap-2">
+                    <button id="soundBtn" onclick="toggleSound()" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 flex items-center justify-center transition active:scale-95">
+                        <i id="soundIcon" class="fa-solid fa-volume-high text-amber-400"></i>
+                    </button>
+                    <button id="pauseBtn" onclick="togglePause()" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 flex items-center justify-center transition active:scale-95">
+                        <i class="fa-solid fa-pause text-amber-400"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN GAME AREA -->
+    <main class="relative z-10 flex-1 max-w-6xl w-full mx-auto p-2 sm:p-4 flex flex-col justify-between gap-4">
+        
+        <!-- CUSTOMERS COUNTER AREA -->
+        <section class="w-full glass-panel rounded-3xl p-3 sm:p-5 min-h-[220px] sm:min-h-[260px] flex flex-col justify-between relative shadow-inner">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs sm:text-sm font-bold text-amber-300/80 flex items-center gap-2">
+                    <i class="fa-solid fa-users"></i> صالة الزبائن المنتظرين
+                </span>
+                <span id="customerQueueInfo" class="text-xs bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full border border-amber-500/30">
+                    الزبائن القادمون: 0
+                </span>
+            </div>
+
+            <!-- Customer Spots Container -->
+            <div id="customersContainer" class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 my-auto">
+                <!-- Customer Cards dynamically injected here -->
+            </div>
+        </section>
+
+        <!-- PREPARATION COUNTER & KITCHEN STATIONS -->
+        <section class="w-full flex flex-col gap-4">
+            
+            <!-- Assembly Table & Active Plates -->
+            <div class="kitchen-surface rounded-2xl p-3 sm:p-4 shadow-2xl border border-slate-700">
+                <div class="flex justify-between items-center mb-3">
+                    <div class="flex items-center gap-2 text-amber-400 font-bold text-sm">
+                        <i class="fa-solid fa-plate-wheat"></i>
+                        <span>طاولة التجميع والتقديم (انقر على الطبق ثم انقر على طلب الزبون لتقديمه)</span>
+                    </div>
+                    <button onclick="clearPlate()" class="text-xs bg-rose-600/80 hover:bg-rose-500 text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1 shadow">
+                        <i class="fa-solid fa-trash-can"></i> إفرغ الطبق
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Plate 1 -->
+                    <div id="plateSlot" onclick="selectPlate()" class="relative border-2 border-dashed border-amber-500/40 hover:border-amber-400 bg-slate-900/60 rounded-2xl p-4 flex flex-col items-center justify-center min-h-[130px] cursor-pointer transition transform active:scale-98 shadow-inner group">
+                        <div class="absolute top-2 right-2 text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">
+                            صحن التجهيز الحالي
+                        </div>
+
+                        <!-- Contents Display -->
+                        <div id="plateContents" class="flex flex-col-reverse items-center justify-center min-h-[70px] w-full gap-0.5">
+                            <span class="text-slate-500 text-xs">الطبق فارغ.. ابدأ بإضافة الخبز أو المكونات!</span>
+                        </div>
+
+                        <div id="plateActions" class="mt-2 hidden">
+                            <span class="text-xs font-bold bg-emerald-500 text-slate-950 px-3 py-1 rounded-full shadow-lg group-hover:bg-emerald-400">
+                                جاهز للتقديم!
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Sides & Drinks Holding Slot -->
+                    <div class="bg-slate-900/60 rounded-2xl p-3 border border-slate-800 flex flex-col justify-around">
+                        <div class="text-xs text-slate-400 font-bold mb-1 flex justify-between">
+                            <span>وجبات جانبية ومشروبات جاهزة:</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <!-- Cooked Fries Slot -->
+                            <div id="cookedFriesSlot" onclick="serveSide('fries')" class="bg-slate-800/90 hover:bg-slate-700 border border-slate-700 rounded-xl p-2 flex items-center gap-3 cursor-pointer transition">
+                                <div class="text-2xl">🍟</div>
+                                <div>
+                                    <div class="text-xs font-bold text-amber-300">بطاطس مقلية</div>
+                                    <div id="friesCount" class="text-[11px] text-slate-400">الكمية: 0</div>
+                                </div>
+                            </div>
+                            <!-- Filled Drink Slot -->
+                            <div id="filledDrinkSlot" onclick="serveSide('drink')" class="bg-slate-800/90 hover:bg-slate-700 border border-slate-700 rounded-xl p-2 flex items-center gap-3 cursor-pointer transition">
+                                <div class="text-2xl">🥤</div>
+                                <div>
+                                    <div class="text-xs font-bold text-cyan-300">عصير بارد</div>
+                                    <div id="drinkCount" class="text-[11px] text-slate-400">الكمية: 0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COOKING APPLIANCES & INGREDIENTS -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                
+                <!-- Grill & Fryer Stations (7 cols) -->
+                <div class="lg:col-span-7 glass-panel rounded-2xl p-4 flex flex-col justify-between gap-3 border border-slate-700/80">
+                    <div class="text-xs font-bold text-amber-400 flex items-center justify-between">
+                        <span class="flex items-center gap-2"><i class="fa-solid fa-fire-burner"></i> محطات الطهي الحراري</span>
+                        <span class="text-slate-400 text-[11px]">انقر لتشغيل المحطة أو جني المطهو</span>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-3">
+                        <!-- Grill Slot 1 -->
+                        <div id="grill0" onclick="interactGrill(0)" class="bg-slate-900/80 border border-slate-700 hover:border-amber-500 rounded-xl p-3 flex flex-col items-center justify-between h-32 cursor-pointer relative overflow-hidden transition">
+                            <div class="text-xs text-slate-400 font-bold">شواية 1</div>
+                            <div id="grillIcon0" class="text-3xl my-1 transition">🥩</div>
+                            <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                                <div id="grillProgress0" class="progress-bar-fill h-full w-0 bg-amber-500"></div>
+                            </div>
+                            <span id="grillStatus0" class="text-[10px] text-slate-400 mt-1">خالية</span>
+                        </div>
+
+                        <!-- Grill Slot 2 -->
+                        <div id="grill1" onclick="interactGrill(1)" class="bg-slate-900/80 border border-slate-700 hover:border-amber-500 rounded-xl p-3 flex flex-col items-center justify-between h-32 cursor-pointer relative overflow-hidden transition">
+                            <div class="text-xs text-slate-400 font-bold">شواية 2</div>
+                            <div id="grillIcon1" class="text-3xl my-1 transition">🥩</div>
+                            <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                                <div id="grillProgress1" class="progress-bar-fill h-full w-0 bg-amber-500"></div>
+                            </div>
+                            <span id="grillStatus1" class="text-[10px] text-slate-400 mt-1">خالية</span>
+                        </div>
+
+                        <!-- Deep Fryer Slot -->
+                        <div id="fryerSlot" onclick="interactFryer()" class="bg-slate-900/80 border border-slate-700 hover:border-amber-500 rounded-xl p-3 flex flex-col items-center justify-between h-32 cursor-pointer relative overflow-hidden transition">
+                            <div class="text-xs text-amber-300 font-bold">مقلاة البطاطس</div>
+                            <div id="fryerIcon" class="text-3xl my-1 transition">🥔</div>
+                            <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                                <div id="fryerProgress" class="progress-bar-fill h-full w-0 bg-yellow-400"></div>
+                            </div>
+                            <span id="fryerStatus" class="text-[10px] text-slate-400 mt-1">جاهزة للقلي</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ingredients & Beverage Station (5 cols) -->
+                <div class="lg:col-span-5 glass-panel rounded-2xl p-4 flex flex-col justify-between gap-2 border border-slate-700/80">
+                    <div class="text-xs font-bold text-amber-400 flex items-center gap-2">
+                        <i class="fa-solid fa-box-open"></i> المكونات والمشروبات
+                    </div>
+
+                    <!-- Ingredients Grid -->
+                    <div class="grid grid-cols-4 gap-2">
+                        <!-- Bun -->
+                        <button onclick="addIngredientToPlate('bun')" class="bg-slate-800/90 hover:bg-amber-600/30 border border-slate-700 hover:border-amber-500 rounded-xl p-2 flex flex-col items-center justify-center transition active:scale-95 shadow">
+                            <span class="text-2xl">🍞</span>
+                            <span class="text-[11px] font-bold text-slate-200 mt-1">خبز</span>
+                        </button>
+
+                        <!-- Cheese -->
+                        <button onclick="addIngredientToPlate('cheese')" class="bg-slate-800/90 hover:bg-amber-600/30 border border-slate-700 hover:border-amber-500 rounded-xl p-2 flex flex-col items-center justify-center transition active:scale-95 shadow">
+                            <span class="text-2xl">🧀</span>
+                            <span class="text-[11px] font-bold text-amber-300 mt-1">جبن</span>
+                        </button>
+
+                        <!-- Tomato -->
+                        <button onclick="addIngredientToPlate('tomato')" class="bg-slate-800/90 hover:bg-amber-600/30 border border-slate-700 hover:border-amber-500 rounded-xl p-2 flex flex-col items-center justify-center transition active:scale-95 shadow">
+                            <span class="text-2xl">🍅</span>
+                            <span class="text-[11px] font-bold text-rose-400 mt-1">طماطم</span>
+                        </button>
+
+                        <!-- Lettuce -->
+                        <button onclick="addIngredientToPlate('lettuce')" class="bg-slate-800/90 hover:bg-amber-600/30 border border-slate-700 hover:border-amber-500 rounded-xl p-2 flex flex-col items-center justify-center transition active:scale-95 shadow">
+                            <span class="text-2xl">🥬</span>
+                            <span class="text-[11px] font-bold text-emerald-400 mt-1">خس</span>
+                        </button>
+                    </div>
+
+                    <!-- Drink Dispenser Button -->
+                    <div id="drinkDispenser" onclick="interactDrink()" class="bg-gradient-to-r from-cyan-900/60 to-blue-900/60 hover:from-cyan-800/80 hover:to-blue-800/80 border border-cyan-500/40 rounded-xl p-2.5 flex items-center justify-between cursor-pointer transition active:scale-98">
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl">🧃</span>
+                            <div>
+                                <div class="text-xs font-bold text-cyan-200">مكينة العصائر والمشروبات</div>
+                                <div id="drinkStatus" class="text-[10px] text-cyan-400">انقر لتعبئة كوب طازج</div>
+                            </div>
+                        </div>
+                        <div class="w-16 bg-slate-950 h-2 rounded-full overflow-hidden border border-cyan-800">
+                            <div id="drinkProgress" class="progress-bar-fill h-full w-0 bg-cyan-400"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODALS & OVERLAYS -->
+    
+    <!-- START / NEXT LEVEL MODAL -->
+    <div id="gameModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full rounded-3xl p-6 sm:p-8 text-center border border-amber-500/40 shadow-2xl relative transform transition-all">
+            <div class="w-20 h-20 bg-gradient-to-tr from-amber-500 to-red-500 rounded-2xl mx-auto flex items-center justify-center shadow-lg mb-4 glow-button">
+                <i id="modalIcon" class="fa-solid fa-utensils text-4xl text-white"></i>
+            </div>
+            
+            <h2 id="modalTitle" class="text-2xl sm:text-3xl font-black text-amber-300 mb-2">أهلاً بك في مطعمك الخاص!</h2>
+            <p id="modalDesc" class="text-slate-300 text-sm mb-6 leading-relaxed">
+                استعد لتقديم أشهى الوجبات للزبائن! قم بطهي اللحم، إعداد البرجر، واستقبال الطلبات بأسرع ما لديك لتحقيق الهدف المالي قبل انتهاء الوقت.
+            </p>
+
+            <div class="bg-slate-900/80 rounded-xl p-4 mb-6 border border-slate-800 text-right text-xs text-slate-300 space-y-2">
+                <div class="flex justify-between font-bold text-amber-400 border-b border-slate-800 pb-1">
+                    <span>هدف المرحلة:</span>
+                    <span id="modalTargetText">$150</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>الوقت المتاح:</span>
+                    <span id="modalTimeText">60 ثانية</span>
+                </div>
+            </div>
+
+            <button onclick="startGame()" class="w-full bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-400 hover:to-red-400 text-slate-950 font-black text-lg py-3.5 rounded-xl shadow-xl transform transition active:scale-95 glow-button">
+                ابدأ اللعب الآن 🚀
+            </button>
+        </div>
+    </div>
+
+    <!-- PAUSE MODAL -->
+    <div id="pauseModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-sm w-full rounded-3xl p-6 text-center border border-slate-700 shadow-2xl">
+            <i class="fa-solid fa-pause text-5xl text-amber-400 mb-3"></i>
+            <h3 class="text-2xl font-bold text-white mb-2">اللعبة متوقفة</h3>
+            <p class="text-slate-400 text-xs mb-6">خذ نفساً عميقاً ثم واصل إعداد الوجبات!</p>
+            <button onclick="togglePause()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl transition">
+                استئناف اللعب
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /* WEB AUDIO API - PROCEDURAL AUDIO SYNTHESIZER (No external files needed) */
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playPop() {
+                if (this.muted) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.08);
+            }
+
+            playCoin() {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc1 = this.ctx.createOscillator();
+                const osc2 = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc1.type = 'sine';
+                osc2.type = 'sine';
+
+                osc1.frequency.setValueAtTime(987.77, now); // B5
+                osc2.frequency.setValueAtTime(1318.51, now + 0.08); // E6
+
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc1.start(now);
+                osc1.stop(now + 0.08);
+                osc2.start(now + 0.08);
+                osc2.stop(now + 0.3);
+            }
+
+            playSizzle() {
+                if (this.muted) return;
+                this.init();
+                const bufferSize = this.ctx.sampleRate * 0.2;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 3000;
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                noise.start();
+            }
+
+            playError() {
+                if (this.muted) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(110, this.ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.2);
+            }
+
+            playSuccess() {
+                if (this.muted) return;
+                this.init();
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.08 + 0.2);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + idx * 0.08);
+                    osc.stop(this.ctx.currentTime + idx * 0.08 + 0.2);
+                });
+            }
+        }
+
+        const sfx = new SoundFX();
+
+        // GAME CONFIG & STATE
+        const levelsConfig = [
+            { level: 1, name: "افتتاح المطعم", target: 120, time: 60, maxCustomers: 3, spawnRate: 4000 },
+            { level: 2, name: "ساعة الذروة", target: 220, time: 60, maxCustomers: 4, spawnRate: 3200 },
+            { level: 3, name: "المهرجان السريع", target: 350, time: 60, maxCustomers: 4, spawnRate: 2500 }
+        ];
+
+        let state = {
+            currentLevelIndex: 0,
+            earnedMoney: 0,
+            targetMoney: 120,
+            timeLeft: 60,
+            combo: 1,
+            isPlaying: false,
+            isPaused: false,
+            timerInterval: null,
+            customerSpawnTimeout: null,
+            
+            // Kitchen Items & Counters
+            currentPlate: [], // Array of ingredient keys
+            cookedFries: 0,
+            filledDrinks: 0,
+            
+            // Grill Slots [ { state: 'empty'|'raw'|'cooked'|'burnt', progress: 0, interval: null } ]
+            grills: [
+                { state: 'empty', progress: 0, timer: null },
+                { state: 'empty', progress: 0, timer: null }
+            ],
+            
+            // Fryer Slot
+            fryer: { state: 'empty', progress: 0, timer: null },
+            
+            // Drink Slot
+            drink: { state: 'empty', progress: 0, timer: null },
+
+            // Active Customers Array
+            customers: []
+        };
+
+        const CUSTOMER_AVATARS = ['👨‍💼', '👩‍🍳', '🧔', '👩‍🦰', '👨‍🎓', '👧', '👵', '👮‍♂️'];
+
+        // RECIPE BUILDER DEFINITIONS
+        const RECIPES = {
+            burger_simple: { name: "برجر عادي", items: ['bun', 'patty'], price: 25 },
+            burger_cheese: { name: "تشيز برجر", items: ['bun', 'patty', 'cheese'], price: 35 },
+            burger_deluxe: { name: "ديلوكس برجر", items: ['bun', 'patty', 'cheese', 'tomato', 'lettuce'], price: 50 },
+            fries: { name: "بطاطس", items: ['fries'], price: 15 },
+            drink: { name: "عصير", items: ['drink'], price: 15 }
+        };
+
+        function generateRandomOrder() {
+            const keys = Object.keys(RECIPES);
+            const mainDish = RECIPES[keys[Math.floor(Math.random() * 3)]]; // One burger type
+            
+            // 50% chance to add a side
+            const includeSide = Math.random() > 0.4;
+            const sideType = Math.random() > 0.5 ? 'fries' : 'drink';
+
+            let orderItems = [...mainDish.items];
+            let totalPrice = mainDish.price;
+
+            if (includeSide) {
+                orderItems.push(sideType);
+                totalPrice += RECIPES[sideType].price;
+            }
+
+            return {
+                dishName: mainDish.name + (includeSide ? ` + ${RECIPES[sideType].name}` : ''),
+                items: orderItems,
+                price: totalPrice
+            };
+        }
+
+        function spawnCustomer() {
+            if (!state.isPlaying || state.isPaused) return;
+
+            const lvl = levelsConfig[state.currentLevelIndex];
+            if (state.customers.length >= lvl.maxCustomers) return;
+
+            const newCustomer = {
+                id: Date.now() + Math.random(),
+                avatar: CUSTOMER_AVATARS[Math.floor(Math.random() * CUSTOMER_AVATARS.length)],
+                order: generateRandomOrder(),
+                maxPatience: 25, // seconds
+                patience: 25
+            };
+
+            state.customers.push(newCustomer);
+            renderCustomers();
+            sfx.playPop();
+
+            // Schedule next customer
+            const nextSpawn = Math.max(1500, lvl.spawnRate - (Math.random() * 1000));
+            state.customerSpawnTimeout = setTimeout(spawnCustomer, nextSpawn);
+        }
+
+        function renderCustomers() {
+            const container = document.getElementById('customersContainer');
+            container.innerHTML = '';
+
+            state.customers.forEach((cust) => {
+                const patiencePct = (cust.patience / cust.maxPatience) * 100;
+                let barColor = 'bg-emerald-500';
+                if (patiencePct < 50) barColor = 'bg-amber-500';
+                if (patiencePct < 25) barColor = 'bg-rose-500';
+
+                // Render order item emojis
+                const itemsEmojiHTML = cust.order.items.map(item => {
+                    switch(item) {
+                        case 'bun': return '🍞';
+                        case 'patty': return '🥩';
+                        case 'cheese': return '🧀';
+                        case 'tomato': return '🍅';
+                        case 'lettuce': return '🥬';
+                        case 'fries': return '🍟';
+                        case 'drink': return '🥤';
+                        default: return '';
+                    }
+                }).join(' ');
+
+                const card = document.createElement('div');
+                card.className = "bg-slate-900/90 border border-slate-700/80 rounded-2xl p-3 flex flex-col justify-between relative shadow-xl transform transition-all duration-300 hover:scale-102";
+                card.innerHTML = `
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-3xl">${cust.avatar}</span>
+                            <div>
+                                <div class="text-xs font-extrabold text-amber-300">$${cust.order.price}</div>
+                                <div class="text-[10px] text-slate-400 font-semibold">${cust.order.dishName}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Bubble -->
+                    <div class="bg-slate-950/80 rounded-xl p-2 my-2 border border-slate-800 flex items-center justify-center text-lg gap-1 tracking-widest shadow-inner">
+                        ${itemsEmojiHTML}
+                    </div>
+
+                    <!-- Patience Bar -->
+                    <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800 mb-2">
+                        <div class="h-full ${barColor} transition-all duration-200" style="width: ${patiencePct}%"></div>
+                    </div>
+
+                    <!-- Deliver Button -->
+                    <button onclick="deliverOrder(${cust.id})" class="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs py-2 rounded-lg transition active:scale-95 flex items-center justify-center gap-1 shadow">
+                        <i class="fa-solid fa-bell"></i> تقديم الطلب
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+
+            document.getElementById('customerQueueInfo').innerText = `الزبائن الحظور: ${state.customers.length}`;
+        }
+
+        // GRILL MECHANICS
+        function interactGrill(index) {
+            const slot = state.grills[index];
+            if (!state.isPlaying || state.isPaused) return;
+
+            if (slot.state === 'empty') {
+                // Place raw patty
+                slot.state = 'raw';
+                slot.progress = 0;
+                sfx.playSizzle();
+                updateGrillUI(index);
+
+                slot.timer = setInterval(() => {
+                    if (state.isPaused) return;
+                    slot.progress += 10;
+                    
+                    if (slot.progress >= 100 && slot.state === 'raw') {
+                        // Turned Cooked
+                        slot.state = 'cooked';
+                        slot.progress = 0;
+                        sfx.playPop();
+                    } else if (slot.progress >= 100 && slot.state === 'cooked') {
+                        // Turned Burnt
+                        slot.state = 'burnt';
+                        clearInterval(slot.timer);
+                        sfx.playError();
+                    }
+                    updateGrillUI(index);
+                }, 300);
+
+            } else if (slot.state === 'cooked') {
+                // Collect cooked patty onto active plate
+                clearInterval(slot.timer);
+                addIngredientToPlate('patty');
+                slot.state = 'empty';
+                slot.progress = 0;
+                updateGrillUI(index);
+            } else if (slot.state === 'burnt') {
+                // Trash burnt patty
+                clearInterval(slot.timer);
+                slot.state = 'empty';
+                slot.progress = 0;
+                sfx.playError();
+                showFloatingText('احترق اللحم! 🗑️', 'text-rose-500');
+                updateGrillUI(index);
+            }
+        }
+
+        function updateGrillUI(index) {
+            const slot = state.grills[index];
+            const iconEl = document.getElementById(`grillIcon${index}`);
+            const progressEl = document.getElementById(`grillProgress${index}`);
+            const statusEl = document.getElementById(`grillStatus${index}`);
+            const cardEl = document.getElementById(`grill${index}`);
+
+            if (slot.state === 'empty') {
+                iconEl.innerText = '🥩';
+                iconEl.classList.remove('cooking-sizzle');
+                progressEl.style.width = '0%';
+                statusEl.innerText = 'انقر لوضع لحم نيء';
+                statusEl.className = 'text-[10px] text-slate-400 mt-1';
+                cardEl.classList.remove('border-rose-500', 'border-emerald-500');
+            } else if (slot.state === 'raw') {
+                iconEl.innerText = '🥩';
+                iconEl.classList.add('cooking-sizzle');
+                progressEl.style.width = `${slot.progress}%`;
+                progressEl.className = 'progress-bar-fill h-full bg-amber-500';
+                statusEl.innerText = 'جاري الشواء...';
+                statusEl.className = 'text-[10px] text-amber-400 font-bold mt-1';
+            } else if (slot.state === 'cooked') {
+                iconEl.innerText = '🍖';
+                iconEl.classList.remove('cooking-sizzle');
+                progressEl.style.width = `${slot.progress}%`;
+                progressEl.className = 'progress-bar-fill h-full bg-emerald-400';
+                statusEl.innerText = 'ناضج! انقر لجمعه';
+                statusEl.className = 'text-[10px] text-emerald-400 font-extrabold mt-1 animate-pulse';
+            } else if (slot.state === 'burnt') {
+                iconEl.innerText = '🪨';
+                iconEl.classList.remove('cooking-sizzle');
+                progressEl.style.width = '100%';
+                progressEl.className = 'progress-bar-fill h-full bg-rose-600';
+                statusEl.innerText = 'احترق! انقر لتنظيفه';
+                statusEl.className = 'text-[10px] text-rose-500 font-black mt-1';
+            }
+        }
+
+        // FRYER MECHANICS
+        function interactFryer() {
+            if (!state.isPlaying || state.isPaused) return;
+            const fryer = state.fryer;
+
+            if (fryer.state === 'empty') {
+                fryer.state = 'frying';
+                fryer.progress = 0;
+                sfx.playSizzle();
+
+                fryer.timer = setInterval(() => {
+                    if (state.isPaused) return;
+                    fryer.progress += 20;
+                    document.getElementById('fryerProgress').style.width = `${fryer.progress}%`;
+
+                    if (fryer.progress >= 100) {
+                        clearInterval(fryer.timer);
+                        fryer.state = 'cooked';
+                        state.cookedFries += 1;
+                        sfx.playSuccess();
+                        showFloatingText('+1 بطاطس مقلية 🍟', 'text-amber-300');
+                        updateFryerUI();
+                    }
+                }, 400);
+
+                updateFryerUI();
+            }
+        }
+
+        function updateFryerUI() {
+            const fryer = state.fryer;
+            const icon = document.getElementById('fryerIcon');
+            const status = document.getElementById('fryerStatus');
+            const count = document.getElementById('friesCount');
+
+            count.innerText = `الكمية: ${state.cookedFries}`;
+
+            if (fryer.state === 'frying') {
+                icon.classList.add('cooking-sizzle');
+                status.innerText = 'جاري القلي...';
+                status.className = 'text-[10px] text-yellow-400 font-bold mt-1';
+            } else {
+                icon.classList.remove('cooking-sizzle');
+                status.innerText = 'انقر للبدء بقلي البطاطس';
+                status.className = 'text-[10px] text-slate-400 mt-1';
+                document.getElementById('fryerProgress').style.width = '0%';
+                fryer.state = 'empty';
+            }
+        }
+
+        // DRINK DISPENSER MECHANICS
+        function interactDrink() {
+            if (!state.isPlaying || state.isPaused) return;
+            const drink = state.drink;
+
+            if (drink.state === 'empty') {
+                drink.state = 'filling';
+                drink.progress = 0;
+                sfx.playPop();
+
+                drink.timer = setInterval(() => {
+                    if (state.isPaused) return;
+                    drink.progress += 25;
+                    document.getElementById('drinkProgress').style.width = `${drink.progress}%`;
+
+                    if (drink.progress >= 100) {
+                        clearInterval(drink.timer);
+                        drink.state = 'filled';
+                        state.filledDrinks += 1;
+                        sfx.playSuccess();
+                        showFloatingText('+1 عصير طازج 🥤', 'text-cyan-300');
+                        updateDrinkUI();
+                    }
+                }, 300);
+
+                updateDrinkUI();
+            }
+        }
+
+        function updateDrinkUI() {
+            const drink = state.drink;
+            const status = document.getElementById('drinkStatus');
+            const count = document.getElementById('drinkCount');
+
+            count.innerText = `الكمية: ${state.filledDrinks}`;
+
+            if (drink.state === 'filling') {
+                status.innerText = 'جاري سكب العصير...';
+            } else {
+                status.innerText = 'انقر لتعبئة كوب طازج';
+                document.getElementById('drinkProgress').style.width = '0%';
+                drink.state = 'empty';
+            }
+        }
+
+        // ASSEMBLY & PLATE LOGIC
+        function addIngredientToPlate(ingredient) {
+            if (!state.isPlaying || state.isPaused) return;
+
+            // Plate capacity constraint
+            if (state.currentPlate.length >= 6) {
+                sfx.playError();
+                showFloatingText('الطبق ممتلئ!', 'text-rose-400');
+                return;
+            }
+
+            state.currentPlate.push(ingredient);
+            sfx.playPop();
+            renderPlate();
+        }
+
+        function renderPlate() {
+            const container = document.getElementById('plateContents');
+            const actions = document.getElementById('plateActions');
+
+            if (state.currentPlate.length === 0) {
+                container.innerHTML = `<span class="text-slate-500 text-xs">الطبق فارغ.. ابدأ بإضافة الخبز أو المكونات!</span>`;
+                actions.classList.add('hidden');
+                return;
+            }
+
+            actions.classList.remove('hidden');
+            container.innerHTML = '';
+
+            state.currentPlate.forEach((ing) => {
+                const itemEl = document.createElement('div');
+                itemEl.className = "text-xl leading-none transition transform hover:scale-110";
+                switch(ing) {
+                    case 'bun': itemEl.innerText = '🍞'; break;
+                    case 'patty': itemEl.innerText = '🥩'; break;
+                    case 'cheese': itemEl.innerText = '🧀'; break;
+                    case 'tomato': itemEl.innerText = '🍅'; break;
+                    case 'lettuce': itemEl.innerText = '🥬'; break;
+                }
+                container.appendChild(itemEl);
+            });
+        }
+
+        function clearPlate() {
+            if (state.currentPlate.length > 0) {
+                state.currentPlate = [];
+                sfx.playError();
+                renderPlate();
+                showFloatingText('تم إفراغ الطبق 🗑️', 'text-slate-400');
+            }
+        }
+
+        // DELIVERING ORDERS
+        function deliverOrder(customerId) {
+            if (!state.isPlaying || state.isPaused) return;
+
+            const custIndex = state.customers.findIndex(c => c.id === customerId);
+            if (custIndex === -1) return;
+
+            const customer = state.customers[custIndex];
+            const neededItems = [...customer.order.items];
+
+            // Check if active burger plate + available sides match needed items
+            let currentAvailable = [...state.currentPlate];
+
+            // Check if order requires fries
+            const needsFries = neededItems.includes('fries');
+            const needsDrink = neededItems.includes('drink');
+
+            if (needsFries) {
+                if (state.cookedFries > 0) {
+                    currentAvailable.push('fries');
+                }
+            }
+            if (needsDrink) {
+                if (state.filledDrinks > 0) {
+                    currentAvailable.push('drink');
+                }
+            }
+
+            // Compare arrays (Order independent matching)
+            const isMatch = arraysMatch(neededItems, currentAvailable);
+
+            if (isMatch) {
+                // Deduct consumed items
+                if (needsFries) state.cookedFries--;
+                if (needsDrink) state.filledDrinks--;
+                state.currentPlate = []; // clear main burger plate
+
+                // Calculate earnings + combo bonus
+                const comboBonus = state.combo * 5;
+                const totalEarned = customer.order.price + comboBonus;
+                
+                state.earnedMoney += totalEarned;
+                state.combo++;
+
+                sfx.playCoin();
+                sfx.playSuccess();
+                showFloatingText(`+$${totalEarned} 🪙`, 'text-emerald-400 font-black');
+
+                // Remove customer
+                state.customers.splice(custIndex, 1);
+
+                // Update UI
+                renderPlate();
+                updateFryerUI();
+                updateDrinkUI();
+                renderCustomers();
+                updateStatsUI();
+
+                // Check Win Condition
+                if (state.earnedMoney >= state.targetMoney) {
+                    levelCompleteWin();
+                }
+            } else {
+                sfx.playError();
+                showFloatingText('الطلب غير مطابق! ❌', 'text-rose-500 font-bold');
+            }
+        }
+
+        function serveSide(type) {
+            // Quick shortcut clicking on sides to deliver directly to customer requiring it
+            if (!state.isPlaying || state.isPaused) return;
+            
+            const targetCust = state.customers.find(c => c.order.items.length === 1 && c.order.items[0] === type);
+            if (targetCust) {
+                deliverOrder(targetCust.id);
+            }
+        }
+
+        function arraysMatch(arr1, arr2) {
+            if (arr1.length !== arr2.length) return false;
+            const sorted1 = [...arr1].sort();
+            const sorted2 = [...arr2].sort();
+            return sorted1.every((val, index) => val === sorted2[index]);
+        }
+
+        // GAME LOOP & TIMERS
+        function startGame() {
+            document.getElementById('gameModal').classList.add('hidden');
+            
+            const lvl = levelsConfig[state.currentLevelIndex];
+            state.targetMoney = lvl.target;
+            state.timeLeft = lvl.time;
+            state.earnedMoney = 0;
+            state.combo = 1;
+            state.isPlaying = true;
+            state.isPaused = false;
+            state.customers = [];
+            state.currentPlate = [];
+            state.cookedFries = 0;
+            state.filledDrinks = 0;
+
+            updateStatsUI();
+            renderPlate();
+            updateFryerUI();
+            updateDrinkUI();
+
+            // Clear existing timers
+            clearInterval(state.timerInterval);
+            clearTimeout(state.customerSpawnTimeout);
+
+            // Start Main Clock
+            state.timerInterval = setInterval(() => {
+                if (state.isPaused) return;
+
+                state.timeLeft--;
+                updateStatsUI();
+
+                // Update Customers Patience
+                state.customers.forEach((cust, idx) => {
+                    cust.patience -= 1;
+                    if (cust.patience <= 0) {
+                        // Customer left angry
+                        state.customers.splice(idx, 1);
+                        state.combo = 1; // reset combo
+                        sfx.playError();
+                        showFloatingText('غادر زبون غاضباً! 😡', 'text-rose-500');
+                    }
+                });
+                renderCustomers();
+
+                // Check Time End
+                if (state.timeLeft <= 0) {
+                    endGameCheck();
+                }
+            }, 1000);
+
+            // Spawn first customer
+            spawnCustomer();
+        }
+
+        function endGameCheck() {
+            clearInterval(state.timerInterval);
+            clearTimeout(state.customerSpawnTimeout);
+            state.isPlaying = false;
+
+            if (state.earnedMoney >= state.targetMoney) {
+                levelCompleteWin();
+            } else {
+                gameOverLose();
+            }
+        }
+
+        function levelCompleteWin() {
+            clearInterval(state.timerInterval);
+            clearTimeout(state.customerSpawnTimeout);
+            state.isPlaying = false;
+            sfx.playSuccess();
+
+            const isFinalLevel = state.currentLevelIndex >= levelsConfig.length - 1;
+
+            document.getElementById('modalIcon').className = "fa-solid fa-trophy text-4xl text-yellow-300";
+            document.getElementById('modalTitle').innerText = isFinalLevel ? "🎉 مبروك! أصبحت الطباخ الأسطوري!" : "نجحت في إنهاء المرحلة!";
+            document.getElementById('modalDesc').innerText = isFinalLevel ? 
+                `أذهلت الجميع بمهارتك السرعة! جمعت $${state.earnedMoney} وأصبحت أفضل طباخ في المدينة!` :
+                `عمل ممتاز! جمعت $${state.earnedMoney} وتجاوزت الهدف المطلوب. استعد للمرحلة التالية!`;
+
+            document.getElementById('modalTargetText').innerText = `$${state.earnedMoney}`;
+            document.getElementById('modalTimeText').innerText = `${levelsConfig[state.currentLevelIndex].time - state.timeLeft} ثانية`;
+
+            const modalBtn = document.querySelector('#gameModal button');
+            if (isFinalLevel) {
+                modalBtn.innerText = "إعادة اللعب من البداية 🔄";
+                modalBtn.onclick = () => {
+                    state.currentLevelIndex = 0;
+                    startGame();
+                };
+            } else {
+                modalBtn.innerText = "الانتقال للمرحلة التالية ⏩";
+                modalBtn.onclick = () => {
+                    state.currentLevelIndex++;
+                    startGame();
+                };
+            }
+
+            document.getElementById('gameModal').classList.remove('hidden');
+        }
+
+        function gameOverLose() {
+            sfx.playError();
+            document.getElementById('modalIcon').className = "fa-solid fa-hourglass-end text-4xl text-rose-300";
+            document.getElementById('modalTitle').innerText = "انتهى الوقت!";
+            document.getElementById('modalDesc').innerText = `لم تتمكن من جمع المبلغ المطلوب ($${state.targetMoney}). حاول تقديم الطلبات بسرعة أسرع ومراعاة حماس الزبائن!`;
+            
+            document.getElementById('modalTargetText').innerText = `$${state.earnedMoney} / $${state.targetMoney}`;
+            document.getElementById('modalTimeText').innerText = "0 ثانية";
+
+            const modalBtn = document.querySelector('#gameModal button');
+            modalBtn.innerText = "حاول مرة أخرى 🔁";
+            modalBtn.onclick = () => {
+                startGame();
+            };
+
+            document.getElementById('gameModal').classList.remove('hidden');
+        }
+
+        // HELPERS & UTILITIES
+        function updateStatsUI() {
+            const lvl = levelsConfig[state.currentLevelIndex];
+            document.getElementById('levelNum').innerText = lvl.level;
+            document.getElementById('levelTitle').innerText = lvl.name;
+            document.getElementById('earnedMoney').innerText = state.earnedMoney;
+            document.getElementById('targetMoney').innerText = state.target;
+            
+            const minutes = Math.floor(state.timeLeft / 60);
+            const seconds = state.timeLeft % 60;
+            document.getElementById('timerText').innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('comboText').innerText = `x${state.combo}`;
+        }
+
+        function showFloatingText(text, colorClass = 'text-amber-400') {
+            const floatEl = document.createElement('div');
+            floatEl.className = `fixed z-50 pointer-events-none text-lg font-black ${colorClass} float-text`;
+            floatEl.style.left = `${window.innerWidth / 2 - 50 + (Math.random() * 60 - 30)}px`;
+            floatEl.style.top = `${window.innerHeight / 2 + (Math.random() * 40 - 20)}px`;
+            floatEl.innerText = text;
+            document.body.appendChild(floatEl);
+
+            setTimeout(() => {
+                floatEl.remove();
+            }, 800);
+        }
+
+        function togglePause() {
+            if (!state.isPlaying) return;
+            state.isPaused = !state.isPaused;
+            const pauseModal = document.getElementById('pauseModal');
+            if (state.isPaused) {
+                pauseModal.classList.remove('hidden');
+            } else {
+                pauseModal.classList.add('hidden');
+            }
+        }
+
+        function toggleSound() {
+            sfx.muted = !sfx.muted;
+            const icon = document.getElementById('soundIcon');
+            if (sfx.muted) {
+                icon.className = "fa-solid fa-volume-xmark text-rose-400";
+            } else {
+                icon.className = "fa-solid fa-volume-high text-amber-400";
+            }
+        }
+
+        // BACKGROUND PARTICLES CANVAS
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        for (let i = 0; i < 25; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                radius: Math.random() * 3 + 1,
+                speedY: Math.random() * -0.8 - 0.2,
+                opacity: Math.random() * 0.5 + 0.2
+            });
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(245, 158, 11, ';
+
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(245, 158, 11, ${p.opacity})`;
+                ctx.fill();
+
+                p.y += p.speedY;
+                if (p.y < 0) {
+                    p.y = canvas.height;
+                    p.x = Math.random() * canvas.width;
+                }
+            });
+
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // Initialize UI stats on load
+        updateStatsUI();
+    </script>
+</body>
+</html>
