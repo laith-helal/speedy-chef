@@ -79,6 +79,29 @@
         .progress-bar-fill {
             transition: width 0.2s linear, background-color 0.3s ease;
         }
+
+        .chef-card {
+            transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .chef-card:hover { transform: translateY(-2px); }
+        .chef-card.selected {
+            border-color: #fbbf24;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(127, 29, 29, 0.35));
+            box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2), 0 12px 28px rgba(245, 158, 11, 0.16);
+        }
+        .chef-card:focus-visible, button:focus-visible, [role="button"]:focus-visible {
+            outline: 3px solid rgba(125, 211, 252, 0.95);
+            outline-offset: 2px;
+        }
+        .keyboard-hint kbd {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            border-bottom-width: 2px;
+            border-radius: 0.35rem;
+            padding: 0.05rem 0.35rem;
+            color: #fcd34d;
+        }
+        .status-live { animation: pulseGlow 1.6s infinite; }
     </style>
 </head>
 <body class="flex flex-col min-h-screen justify-between relative overflow-hidden">
@@ -137,6 +160,13 @@
                     </div>
                 </div>
 
+                <div class="hidden sm:flex bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-700 items-center gap-2 mb-2">
+                    <span id="activeChefAvatar" class="text-xl">👩‍🍳</span>
+                    <div>
+                        <div class="text-[10px] text-slate-400 font-bold">الشيف</div>
+                        <div id="activeChefName" class="text-xs font-extrabold text-amber-300">نور</div>
+                    </div>
+                </div>
                 <!-- Sound & Pause Controls -->
                 <div class="flex items-center gap-2">
                     <button id="soundBtn" onclick="toggleSound()" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 flex items-center justify-center transition active:scale-95">
@@ -341,7 +371,15 @@
                 استعد لتقديم أشهى الوجبات للزبائن! قم بطهي اللحم، إعداد البرجر، واستقبال الطلبات بأسرع ما لديك لتحقيق الهدف المالي قبل انتهاء الوقت.
             </p>
 
-            <div class="bg-slate-900/80 rounded-xl p-4 mb-6 border border-slate-800 text-right text-xs text-slate-300 space-y-2">
+            <div id="chefSelection" class="text-right mb-5">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-black text-amber-300">اختر شيفك قبل البداية</span>
+                    <span class="text-[10px] text-slate-400">كل شيف يغيّر أسلوب اللعب</span>
+                </div>
+                <div id="chefCards" class="grid grid-cols-2 gap-2"></div>
+            </div>
+
+            <div class="bg-slate-900/80 rounded-xl p-4 mb-4 border border-slate-800 text-right text-xs text-slate-300 space-y-2">
                 <div class="flex justify-between font-bold text-amber-400 border-b border-slate-800 pb-1">
                     <span>هدف المرحلة:</span>
                     <span id="modalTargetText">$150</span>
@@ -352,7 +390,10 @@
                 </div>
             </div>
 
-            <button onclick="startGame()" class="w-full bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-400 hover:to-red-400 text-slate-950 font-black text-lg py-3.5 rounded-xl shadow-xl transform transition active:scale-95 glow-button">
+            <div class="keyboard-hint text-[10px] text-slate-400 mb-4 leading-6">
+                اختصارات سريعة: <kbd>1</kbd> <kbd>2</kbd> للشوايات، <kbd>F</kbd> للقلاية، <kbd>D</kbd> للمشروب، <kbd>P</kbd> للإيقاف.
+            </div>
+            <button id="gameActionBtn" onclick="startGame()" class="w-full bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-400 hover:to-red-400 text-slate-950 font-black text-lg py-3.5 rounded-xl shadow-xl transform transition active:scale-95 glow-button">
                 ابدأ اللعب الآن 🚀
             </button>
         </div>
@@ -379,16 +420,23 @@
             }
 
             init() {
-                if (!this.ctx) {
-                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                if (this.ctx.state === 'suspended') {
-                    this.ctx.resume();
+                try {
+                    if (!this.ctx) {
+                        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                        if (!AudioContextClass) return false;
+                        this.ctx = new AudioContextClass();
+                    }
+                    if (this.ctx.state === 'suspended') this.ctx.resume();
+                    return true;
+                } catch (error) {
+                    console.warn('Audio unavailable:', error);
+                    this.muted = true;
+                    return false;
                 }
             }
 
             playPop() {
-                if (this.muted) return;
+                if (this.muted || !this.init()) return;
                 this.init();
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
@@ -404,7 +452,7 @@
             }
 
             playCoin() {
-                if (this.muted) return;
+                if (this.muted || !this.init()) return;
                 this.init();
                 const now = this.ctx.currentTime;
                 const osc1 = this.ctx.createOscillator();
@@ -431,7 +479,7 @@
             }
 
             playSizzle() {
-                if (this.muted) return;
+                if (this.muted || !this.init()) return;
                 this.init();
                 const bufferSize = this.ctx.sampleRate * 0.2;
                 const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
@@ -459,7 +507,7 @@
             }
 
             playError() {
-                if (this.muted) return;
+                if (this.muted || !this.init()) return;
                 this.init();
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
@@ -475,7 +523,7 @@
             }
 
             playSuccess() {
-                if (this.muted) return;
+                if (this.muted || !this.init()) return;
                 this.init();
                 const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
                 notes.forEach((freq, idx) => {
@@ -498,11 +546,44 @@
         const levelsConfig = [
             { level: 1, name: "افتتاح المطعم", target: 120, time: 60, maxCustomers: 3, spawnRate: 4000 },
             { level: 2, name: "ساعة الذروة", target: 220, time: 60, maxCustomers: 4, spawnRate: 3200 },
-            { level: 3, name: "المهرجان السريع", target: 350, time: 60, maxCustomers: 4, spawnRate: 2500 }
+            { level: 3, name: "المهرجان السريع", target: 350, time: 60, maxCustomers: 4, spawnRate: 2500 },
+            { level: 4, name: "ليلة النجوم", target: 480, time: 65, maxCustomers: 5, spawnRate: 2200 }
         ];
+
+        const CHEFS = {
+            nour: {
+                name: 'نور', avatar: '👩‍🍳', title: 'الشيف المتوازن', color: 'amber',
+                description: 'تبدأ رحلتك بقدرات متوازنة في كل المحطات.',
+                perk: 'لا توجد عقوبة خفية — خيار ممتاز للتعلم.',
+                grillSpeed: 1, fryerSpeed: 1, drinkSpeed: 1, patienceMultiplier: 1, comboMultiplier: 1
+            },
+            fadi: {
+                name: 'فادي', avatar: '🧑‍🍳', title: 'ملك الشواية', color: 'rose',
+                description: 'يحوّل اللحم بسرعة ويمنحك وقتًا أطول قبل الاحتراق.',
+                perk: 'الشواية أسرع 35% ونافذة الاحتراق أطول.',
+                grillSpeed: 1.35, fryerSpeed: 1, drinkSpeed: 1, patienceMultiplier: 1, comboMultiplier: 1
+            },
+            lina: {
+                name: 'لينا', avatar: '👩‍🍳', title: 'سيدة السرعة', color: 'cyan',
+                description: 'تجهز الجوانب والمشروبات بسرعة البرق.',
+                perk: 'القلاية وموزع المشروبات أسرع 35%.',
+                grillSpeed: 1, fryerSpeed: 1.35, drinkSpeed: 1.35, patienceMultiplier: 1, comboMultiplier: 1
+            },
+            omar: {
+                name: 'عمر', avatar: '🧔‍♂️', title: 'محبوب الزبائن', color: 'emerald',
+                description: 'يهدئ الزبائن ويحافظ على السلسلة لأطول وقت.',
+                perk: 'صبر الزبائن +35% ومكافأة السلسلة +25%.',
+                grillSpeed: 1, fryerSpeed: 1, drinkSpeed: 1, patienceMultiplier: 1.35, comboMultiplier: 1.25
+            }
+        };
+
+        function getSelectedChef() {
+            return CHEFS[state.selectedChefId] || CHEFS.nour;
+        }
 
         let state = {
             currentLevelIndex: 0,
+            selectedChefId: localStorage.getItem('speedyChefCharacter') || 'nour',
             earnedMoney: 0,
             targetMoney: 120,
             timeLeft: 60,
@@ -544,6 +625,33 @@
             drink: { name: "عصير", items: ['drink'], price: 15 }
         };
 
+        function selectChef(chefId) {
+            if (!CHEFS[chefId]) return;
+            state.selectedChefId = chefId;
+            localStorage.setItem('speedyChefCharacter', chefId);
+            renderChefSelection();
+            updateStatsUI();
+            sfx.playPop();
+        }
+
+        function renderChefSelection() {
+            const container = document.getElementById('chefCards');
+            if (!container) return;
+            container.innerHTML = Object.entries(CHEFS).map(([id, chef]) => `
+                <button type="button" onclick="selectChef('${id}')" aria-pressed="${state.selectedChefId === id}"
+                    class="chef-card ${state.selectedChefId === id ? 'selected' : ''} text-right rounded-xl border border-slate-700 bg-slate-900/80 p-2.5">
+                    <div class="flex items-center gap-2">
+                        <span class="text-3xl">${chef.avatar}</span>
+                        <span class="min-w-0">
+                            <span class="block text-xs font-black text-white">${chef.name}</span>
+                            <span class="block text-[10px] text-amber-300 truncate">${chef.title}</span>
+                        </span>
+                    </div>
+                    <span class="mt-2 block text-[10px] leading-4 text-slate-400">${chef.perk}</span>
+                </button>
+            `).join('');
+        }
+
         function generateRandomOrder() {
             const keys = Object.keys(RECIPES);
             const mainDish = RECIPES[keys[Math.floor(Math.random() * 3)]]; // One burger type
@@ -567,27 +675,35 @@
             };
         }
 
+        function scheduleNextCustomer() {
+            clearTimeout(state.customerSpawnTimeout);
+            if (!state.isPlaying || state.isPaused) return;
+            const lvl = levelsConfig[state.currentLevelIndex];
+            const nextSpawn = Math.max(1500, lvl.spawnRate - (Math.random() * 1000));
+            state.customerSpawnTimeout = setTimeout(() => {
+                spawnCustomer();
+                scheduleNextCustomer();
+            }, nextSpawn);
+        }
+
         function spawnCustomer() {
             if (!state.isPlaying || state.isPaused) return;
 
             const lvl = levelsConfig[state.currentLevelIndex];
-            if (state.customers.length >= lvl.maxCustomers) return;
+            if (state.customers.length < lvl.maxCustomers) {
+                const maxPatience = Math.round(25 * getSelectedChef().patienceMultiplier);
+                const newCustomer = {
+                    id: Date.now() + Math.random(),
+                    avatar: CUSTOMER_AVATARS[Math.floor(Math.random() * CUSTOMER_AVATARS.length)],
+                    order: generateRandomOrder(),
+                    maxPatience,
+                    patience: maxPatience
+                };
 
-            const newCustomer = {
-                id: Date.now() + Math.random(),
-                avatar: CUSTOMER_AVATARS[Math.floor(Math.random() * CUSTOMER_AVATARS.length)],
-                order: generateRandomOrder(),
-                maxPatience: 25, // seconds
-                patience: 25
-            };
-
-            state.customers.push(newCustomer);
-            renderCustomers();
-            sfx.playPop();
-
-            // Schedule next customer
-            const nextSpawn = Math.max(1500, lvl.spawnRate - (Math.random() * 1000));
-            state.customerSpawnTimeout = setTimeout(spawnCustomer, nextSpawn);
+                state.customers.push(newCustomer);
+                renderCustomers();
+                sfx.playPop();
+            }
         }
 
         function renderCustomers() {
@@ -638,14 +754,14 @@
                     </div>
 
                     <!-- Deliver Button -->
-                    <button onclick="deliverOrder(${cust.id})" class="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs py-2 rounded-lg transition active:scale-95 flex items-center justify-center gap-1 shadow">
+                    <button onclick="deliverOrder(${cust.id})" aria-label="تقديم طلب ${cust.order.dishName}" class="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs py-2 rounded-lg transition active:scale-95 flex items-center justify-center gap-1 shadow">
                         <i class="fa-solid fa-bell"></i> تقديم الطلب
                     </button>
                 `;
                 container.appendChild(card);
             });
 
-            document.getElementById('customerQueueInfo').innerText = `الزبائن الحظور: ${state.customers.length}`;
+            document.getElementById('customerQueueInfo').innerText = `الزبائن الحاضرون: ${state.customers.length}`;
         }
 
         // GRILL MECHANICS
@@ -662,7 +778,7 @@
 
                 slot.timer = setInterval(() => {
                     if (state.isPaused) return;
-                    slot.progress += 10;
+                    slot.progress += 10 * getSelectedChef().grillSpeed;
                     
                     if (slot.progress >= 100 && slot.state === 'raw') {
                         // Turned Cooked
@@ -746,20 +862,26 @@
 
                 fryer.timer = setInterval(() => {
                     if (state.isPaused) return;
-                    fryer.progress += 20;
-                    document.getElementById('fryerProgress').style.width = `${fryer.progress}%`;
+                    fryer.progress += 20 * getSelectedChef().fryerSpeed;
+                    document.getElementById('fryerProgress').style.width = `${Math.min(100, fryer.progress)}%`;
 
                     if (fryer.progress >= 100) {
                         clearInterval(fryer.timer);
+                        fryer.timer = null;
                         fryer.state = 'cooked';
-                        state.cookedFries += 1;
                         sfx.playSuccess();
-                        showFloatingText('+1 بطاطس مقلية 🍟', 'text-amber-300');
+                        showFloatingText('البطاطس جاهزة — انقر للجمع 🍟', 'text-amber-300');
                         updateFryerUI();
                     }
                 }, 400);
 
                 updateFryerUI();
+            } else if (fryer.state === 'cooked') {
+                fryer.state = 'empty';
+                state.cookedFries += 1;
+                fryer.progress = 0;
+                updateFryerUI();
+                showFloatingText('+1 بطاطس مقلية — القلاية جاهزة لجولة جديدة 🍟', 'text-amber-300');
             }
         }
 
@@ -772,15 +894,22 @@
             count.innerText = `الكمية: ${state.cookedFries}`;
 
             if (fryer.state === 'frying') {
+                icon.innerText = '🥔';
                 icon.classList.add('cooking-sizzle');
                 status.innerText = 'جاري القلي...';
                 status.className = 'text-[10px] text-yellow-400 font-bold mt-1';
+            } else if (fryer.state === 'cooked') {
+                icon.innerText = '🍟';
+                icon.classList.remove('cooking-sizzle');
+                status.innerText = 'جاهزة! انقر لإخلاء السلة';
+                status.className = 'text-[10px] text-emerald-400 font-black mt-1 animate-pulse';
+                document.getElementById('fryerProgress').style.width = '100%';
             } else {
+                icon.innerText = '🥔';
                 icon.classList.remove('cooking-sizzle');
                 status.innerText = 'انقر للبدء بقلي البطاطس';
                 status.className = 'text-[10px] text-slate-400 mt-1';
                 document.getElementById('fryerProgress').style.width = '0%';
-                fryer.state = 'empty';
             }
         }
 
@@ -796,20 +925,26 @@
 
                 drink.timer = setInterval(() => {
                     if (state.isPaused) return;
-                    drink.progress += 25;
-                    document.getElementById('drinkProgress').style.width = `${drink.progress}%`;
+                    drink.progress += 25 * getSelectedChef().drinkSpeed;
+                    document.getElementById('drinkProgress').style.width = `${Math.min(100, drink.progress)}%`;
 
                     if (drink.progress >= 100) {
                         clearInterval(drink.timer);
+                        drink.timer = null;
                         drink.state = 'filled';
-                        state.filledDrinks += 1;
                         sfx.playSuccess();
-                        showFloatingText('+1 عصير طازج 🥤', 'text-cyan-300');
+                        showFloatingText('العصير جاهز — انقر للجمع 🥤', 'text-cyan-300');
                         updateDrinkUI();
                     }
                 }, 300);
 
                 updateDrinkUI();
+            } else if (drink.state === 'filled') {
+                drink.state = 'empty';
+                state.filledDrinks += 1;
+                drink.progress = 0;
+                updateDrinkUI();
+                showFloatingText('+1 عصير طازج — الموزع جاهز لكوب جديد 🥤', 'text-cyan-300');
             }
         }
 
@@ -822,10 +957,15 @@
 
             if (drink.state === 'filling') {
                 status.innerText = 'جاري سكب العصير...';
+                status.className = 'text-[10px] text-cyan-300';
+            } else if (drink.state === 'filled') {
+                status.innerText = 'جاهز! انقر لإخلاء الكوب';
+                status.className = 'text-[10px] text-emerald-400 font-black animate-pulse';
+                document.getElementById('drinkProgress').style.width = '100%';
             } else {
                 status.innerText = 'انقر لتعبئة كوب طازج';
+                status.className = 'text-[10px] text-cyan-400';
                 document.getElementById('drinkProgress').style.width = '0%';
-                drink.state = 'empty';
             }
         }
 
@@ -919,7 +1059,7 @@
                 state.currentPlate = []; // clear main burger plate
 
                 // Calculate earnings + combo bonus
-                const comboBonus = state.combo * 5;
+                const comboBonus = Math.round(state.combo * 5 * getSelectedChef().comboMultiplier);
                 const totalEarned = customer.order.price + comboBonus;
                 
                 state.earnedMoney += totalEarned;
@@ -981,6 +1121,7 @@
             state.currentPlate = [];
             state.cookedFries = 0;
             state.filledDrinks = 0;
+            resetKitchen();
 
             updateStatsUI();
             renderPlate();
@@ -998,17 +1139,18 @@
                 state.timeLeft--;
                 updateStatsUI();
 
-                // Update Customers Patience
-                state.customers.forEach((cust, idx) => {
+                // Update patience without mutating the array while iterating it.
+                const expiredCustomers = [];
+                state.customers.forEach((cust) => {
                     cust.patience -= 1;
-                    if (cust.patience <= 0) {
-                        // Customer left angry
-                        state.customers.splice(idx, 1);
-                        state.combo = 1; // reset combo
-                        sfx.playError();
-                        showFloatingText('غادر زبون غاضباً! 😡', 'text-rose-500');
-                    }
+                    if (cust.patience <= 0) expiredCustomers.push(cust.id);
                 });
+                if (expiredCustomers.length > 0) {
+                    state.customers = state.customers.filter(cust => !expiredCustomers.includes(cust.id));
+                    state.combo = 1;
+                    sfx.playError();
+                    showFloatingText(`${expiredCustomers.length} زبون غادر غاضباً! 😡`, 'text-rose-500');
+                }
                 renderCustomers();
 
                 // Check Time End
@@ -1017,14 +1159,18 @@
                 }
             }, 1000);
 
-            // Spawn first customer
+            // Spawn first customer and keep the queue flowing even when it is full.
             spawnCustomer();
+            scheduleNextCustomer();
         }
 
         function endGameCheck() {
             clearInterval(state.timerInterval);
             clearTimeout(state.customerSpawnTimeout);
+            state.timerInterval = null;
+            state.customerSpawnTimeout = null;
             state.isPlaying = false;
+            state.isPaused = false;
 
             if (state.earnedMoney >= state.targetMoney) {
                 levelCompleteWin();
@@ -1036,7 +1182,11 @@
         function levelCompleteWin() {
             clearInterval(state.timerInterval);
             clearTimeout(state.customerSpawnTimeout);
+            state.timerInterval = null;
+            state.customerSpawnTimeout = null;
             state.isPlaying = false;
+            state.isPaused = false;
+            resetKitchen();
             sfx.playSuccess();
 
             const isFinalLevel = state.currentLevelIndex >= levelsConfig.length - 1;
@@ -1050,7 +1200,7 @@
             document.getElementById('modalTargetText').innerText = `$${state.earnedMoney}`;
             document.getElementById('modalTimeText').innerText = `${levelsConfig[state.currentLevelIndex].time - state.timeLeft} ثانية`;
 
-            const modalBtn = document.querySelector('#gameModal button');
+            const modalBtn = document.getElementById('gameActionBtn');
             if (isFinalLevel) {
                 modalBtn.innerText = "إعادة اللعب من البداية 🔄";
                 modalBtn.onclick = () => {
@@ -1069,6 +1219,7 @@
         }
 
         function gameOverLose() {
+            resetKitchen();
             sfx.playError();
             document.getElementById('modalIcon').className = "fa-solid fa-hourglass-end text-4xl text-rose-300";
             document.getElementById('modalTitle').innerText = "انتهى الوقت!";
@@ -1077,7 +1228,7 @@
             document.getElementById('modalTargetText').innerText = `$${state.earnedMoney} / $${state.targetMoney}`;
             document.getElementById('modalTimeText').innerText = "0 ثانية";
 
-            const modalBtn = document.querySelector('#gameModal button');
+            const modalBtn = document.getElementById('gameActionBtn');
             modalBtn.innerText = "حاول مرة أخرى 🔁";
             modalBtn.onclick = () => {
                 startGame();
@@ -1087,12 +1238,37 @@
         }
 
         // HELPERS & UTILITIES
+        function resetKitchen() {
+            state.grills.forEach((slot, index) => {
+                if (slot.timer) clearInterval(slot.timer);
+                slot.timer = null;
+                slot.state = 'empty';
+                slot.progress = 0;
+                updateGrillUI(index);
+            });
+            [state.fryer, state.drink].forEach(station => {
+                if (station.timer) clearInterval(station.timer);
+                station.timer = null;
+                station.state = 'empty';
+                station.progress = 0;
+            });
+        }
+
         function updateStatsUI() {
             const lvl = levelsConfig[state.currentLevelIndex];
+            const chef = getSelectedChef();
             document.getElementById('levelNum').innerText = lvl.level;
             document.getElementById('levelTitle').innerText = lvl.name;
             document.getElementById('earnedMoney').innerText = state.earnedMoney;
-            document.getElementById('targetMoney').innerText = state.target;
+            document.getElementById('targetMoney').innerText = lvl.target;
+            const activeChefAvatar = document.getElementById('activeChefAvatar');
+            const activeChefName = document.getElementById('activeChefName');
+            if (activeChefAvatar) activeChefAvatar.innerText = chef.avatar;
+            if (activeChefName) activeChefName.innerText = chef.name;
+            if (!state.isPlaying) {
+                document.getElementById('modalTargetText').innerText = `$${lvl.target}`;
+                document.getElementById('modalTimeText').innerText = `${lvl.time} ثانية`;
+            }
             
             const minutes = Math.floor(state.timeLeft / 60);
             const seconds = state.timeLeft % 60;
@@ -1118,14 +1294,17 @@
             state.isPaused = !state.isPaused;
             const pauseModal = document.getElementById('pauseModal');
             if (state.isPaused) {
+                clearTimeout(state.customerSpawnTimeout);
                 pauseModal.classList.remove('hidden');
             } else {
                 pauseModal.classList.add('hidden');
+                scheduleNextCustomer();
             }
         }
 
         function toggleSound() {
             sfx.muted = !sfx.muted;
+            localStorage.setItem('speedyChefMuted', String(sfx.muted));
             const icon = document.getElementById('soundIcon');
             if (sfx.muted) {
                 icon.className = "fa-solid fa-volume-xmark text-rose-400";
@@ -1177,8 +1356,23 @@
         }
         animateParticles();
 
-        // Initialize UI stats on load
+        // Keyboard shortcuts keep fast rounds playable without leaving the keyboard.
+        document.addEventListener('keydown', (event) => {
+            if (event.target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName)) return;
+            const key = event.key.toLowerCase();
+            if (key === '1') interactGrill(0);
+            if (key === '2') interactGrill(1);
+            if (key === 'f') interactFryer();
+            if (key === 'd') interactDrink();
+            if (key === 'p' || event.key === 'Escape') togglePause();
+        });
+
+        sfx.muted = localStorage.getItem('speedyChefMuted') === 'true';
+        renderChefSelection();
         updateStatsUI();
+        if (sfx.muted) {
+            document.getElementById('soundIcon').className = "fa-solid fa-volume-xmark text-rose-400";
+        }
     </script>
 </body>
 </html>
