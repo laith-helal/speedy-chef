@@ -18,6 +18,9 @@ required = [
     'function scheduleNextCustomer', 'function resetKitchen',
     "getElementById('targetMoney').innerText = lvl.target",
     'state.customers = state.customers.filter',
+    '@media (max-width: 640px)',
+    'touch-action: manipulation',
+    'name="mobile-web-app-capable"',
 ]
 missing = [item for item in required if item not in html]
 if missing:
